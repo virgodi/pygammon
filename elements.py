@@ -7,7 +7,12 @@ black = 'b'
 
 def MoveError(Exception):
     pass
-
+def removeListDuplicate(l):
+    new_l = []
+    for elem in l:
+        if elem not in new_l:
+            new_l.append(elem)
+    return new_l
 class Roll():
     def __init__(self, d=None):
         if d is None:
@@ -60,6 +65,8 @@ class Board():
         self.update_alone()
         self.safe = {}
         self.update_safe()
+        self.inhouse = {}
+        self.update_inhouse()
     def eval_state(self):
         self.state[white]= 0
         self.state[black] = 0
@@ -90,15 +97,19 @@ class Board():
             return 0
         else:
             c = self.home[col]
-            min_piece = 999
-            for k, v in self.board.iteritems():
-                if v and v[0] == enemy and k<min_piece:
-                    min_piece=k
             if enemy == white:
+                min_piece = -1
+                for k, v in self.board.iteritems():
+                    if v and v[0] == enemy and k>min_piece:
+                        min_piece=k
                 for k, v in self.board.iteritems():
                     if v and v[0] == col and k>min_piece:
                         c+=v[1]
             else:
+                min_piece = 999
+                for k, v in self.board.iteritems():
+                    if v and v[0] == enemy and k<min_piece:
+                        min_piece=k
                 for k, v in self.board.iteritems():
                     if v and v[0] == col and k<min_piece:
                         c+=v[1]
@@ -135,7 +146,18 @@ class Board():
             return max([k for k,v in self.board.items() if v and v[0]==white])
         else:
             return min([k for k,v in self.board.items() if v and v[0]==black])
-        
+    
+    def update_inhouse(self):
+        c_w = 0
+        c_b = 0
+        for k, v in self.board.iteritems():
+            if v and v[0] == white and k<6:
+                c_w+=v[1]
+            elif v and v[0] == black and k>19:
+                c_b+=v[1]
+        self.inhouse[white]=c_w
+        self.inhouse[black]=c_b
+
     def copy(self):
         new = copy.deepcopy(self)
         return new
@@ -193,8 +215,11 @@ class Board():
         if len(roll) > 1:
             return self.forward_check(poss_moves, turn)
         else:
-            return poss_moves
-    
+            toreturn = {}
+            for k, v in poss_moves.iteritems():
+                toreturn[k] = removeListDuplicate(v)
+            return toreturn
+            
     def forward_check(self, possiblemoves, turn):
         inadmissible = {}
         for k, moves in possiblemoves.items():
@@ -207,18 +232,32 @@ class Board():
                         inadmissible[k].append(move)
                     except:
                         inadmissible[k] = [move]
-        if inadmissible == possiblemoves:
-            possiblemoves_copy = copy.deepcopy(possiblemoves) 
-            max_dice = max(possiblemoves_copy.keys())
-            possiblemoves_copy = {key: value for key, value in possiblemoves_copy.items() if key == max_dice}
-            return possiblemoves_copy
+        possiblemoves_copy = copy.deepcopy(possiblemoves) 
+        for k in possiblemoves_copy.keys():
+            if possiblemoves_copy[k]==[]:
+                del possiblemoves_copy[k]
+        if inadmissible == possiblemoves_copy:
+            if all(len(v)>0 for v in possiblemoves.values()):
+                possiblemoves_copy = copy.deepcopy(possiblemoves) 
+                max_dice = max(possiblemoves_copy.keys())
+                possiblemoves_copy = {key: value for key, value in possiblemoves_copy.items() if key == max_dice}
+            toreturn = {}
+            for k, v in possiblemoves_copy.iteritems():
+                toreturn[k] = removeListDuplicate(v)
+            return toreturn
         elif len(inadmissible)>0:
             possiblemoves_copy = copy.deepcopy(possiblemoves) 
             for k, v in inadmissible.items():
                 possiblemoves_copy[k] = [x for x in possiblemoves_copy[k] if x not in inadmissible[k]]
-            return possiblemoves_copy
+            toreturn = {}
+            for k, v in possiblemoves_copy.iteritems():
+                toreturn[k] = removeListDuplicate(v)
+            return toreturn
         else:
-            return possiblemoves
+            toreturn = {}
+            for k, v in possiblemoves.iteritems():
+                toreturn[k] = removeListDuplicate(v)
+            return toreturn
 
     @classmethod
     def is_in(cls, possiblemoves, move):
@@ -241,6 +280,7 @@ class Board():
                 new.eval_state()
                 new.update_safe()
                 new.update_alone()
+                new.update_inhouse()
                 return new
             elif self.board[dst][0] != col and self.board[dst][1] == 1:
                 new = self.copy()
@@ -249,6 +289,7 @@ class Board():
                 new.eval_state()
                 new.update_safe()
                 new.update_alone()
+                new.update_inhouse()
                 return new
             else:
                 raise Exception('Cannot free piece at this position.')
@@ -262,6 +303,7 @@ class Board():
                     new.eval_state()
                     new.update_safe()
                     new.update_alone()
+                    new.update_inhouse()
                     return new
             else:
                 raise Exception('All pieces are not yet in the safe zone.')
@@ -285,6 +327,7 @@ class Board():
                 new.eval_state()
                 new.update_safe()
                 new.update_alone()
+                new.update_inhouse()
                 return new
             
     def __repr__(self):
