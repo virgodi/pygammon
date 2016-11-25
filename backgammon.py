@@ -48,6 +48,10 @@ class Game():
             print temp_board
             print
             nextmove = raw_input('{} PLAYER: what is your next move? (You can still use these dice: {}) | '.format(temp_turn.player.upper(), temp_turn.roll))
+            possiblemoves = temp_board.possible_moves(temp_turn)
+            if len(possiblemoves) == 0 and nextmove[0].isdigit():
+                print 'NO VALID MOVES TO PLAY, MUST FINALIZE'
+                continue
             if nextmove.lower() == 'double':
                 temp_board.double()
                 continue
@@ -178,7 +182,7 @@ class Game():
             print '{} Computer cannot move, your turn !'.format(col)
         return  board, Turn(enemy, Roll())
 
-    def human_vs_computer_play(self, pickup=False):
+    def human_vs_computer_play(self, comp_strat=careful, pickup=False):
         col_human = raw_input('Which color do you want to play with? Enter W or B: ').lower()
         if col_human not in ['w', 'b']:
             print 'Not a valid color ! Game aborted !'
@@ -200,7 +204,7 @@ class Game():
             if turn.player == col_human:
                 self.board, turn = Game.human_interact(self.board, turn, False)
             else:
-                self.board, turn = Game.computer_interact(self.board, turn, careful)
+                self.board, turn = Game.computer_interact(self.board, turn, comp_strat)
             if turn == 'exit':
                 break
         try:
@@ -226,17 +230,34 @@ class Game():
         except:
             print 'GAME ABORTED.'
 
-    def computer_vs_computer_play(self):
+    def computer_vs_computer_play(self, comp_strat1=careful, comp_strat2=careful):
         turn = self.initiate_game(Roll())
+        other = white if turn.player == black else black
+        strat = {}
+        strat[turn.player] = comp_strat1
+        strat[other] = comp_strat2
         print "{} Computer won the right to start !".format(turn.player.upper())
+        if comp_strat1 == careful:
+            print "{} Computer plays carefully!".format(turn.player.upper())
+        else:
+            print "{} Computer plays aggressively!".format(turn.player.upper())
+        if comp_strat2 == careful:
+            print "{} Computer plays carefully!".format(other.upper())
+        else:
+            print "{} Computer plays aggressively!".format(other.upper())
         print
+        c=0
         while not turn.is_complete() and not self.board.is_complete()[0]:
-            self.board, turn = Game.computer_interact(self.board, turn, careful)
+            if c%2==0:
+                self.board, turn = Game.computer_interact(self.board, turn, comp_strat1)
+            else:
+                self.board, turn = Game.computer_interact(self.board, turn, comp_strat2)
             while turn.roll.touse[0] == turn.roll.touse[1]:
                 turn = Turn(turn.player, Roll())
             print self.board
             self.history.append(turn)
-        print 'GAME CONCLUDED, {} Computer wins !'.format(self.board.is_complete()[1])
+            c+=1
+        print 'GAME CONCLUDED, {} ({}) Computer wins !'.format(self.board.is_complete()[1], str(strat[self.board.is_complete()[1][0].lower()]))
 
 
 
@@ -246,9 +267,28 @@ if __name__ == '__main__':
     if typ == 1:
         Game().human_vs_human_play()
     elif typ == 2:
-        Game().human_vs_computer_play()
+        stra = raw_input('Do you want an aggressive (A) or careful (C) opponent? ')
+        if stra.lower() == 'a':
+            print 'Aggressive it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=aggressive)
+        else:
+            print 'Careful it is ! Here we go !'
+            Game().human_vs_computer_play()
     else:
         # print 'Not yet implemented ! Come back later !'
-        Game().computer_vs_computer_play()
+        stra1 = raw_input('Do you want the first computer to be aggressive (A) or careful (C)? ')
+        if stra1.lower() == 'd':
+            Game().computer_vs_computer_play()
+        else:  
+            stra2 = raw_input('How about the second one? ')
+            if stra1.lower() == 'a':
+                stra1 = aggressive
+            else:
+                stra1 = careful
+            if stra2.lower() == 'a':
+                stra2 = aggressive
+            else:
+                stra2 = careful
+            Game().computer_vs_computer_play(stra1, stra2)
 
 
