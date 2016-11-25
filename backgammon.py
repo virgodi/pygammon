@@ -44,7 +44,7 @@ class Game():
             new_player = black
         else:
             new_player = white    
-        while not turn.is_complete():
+        while not turn.is_complete() and not temp_board.is_complete()[0]:
             print temp_board
             print
             nextmove = raw_input('{} PLAYER: what is your next move? (You can still use these dice: {}) | '.format(temp_turn.player.upper(), temp_turn.roll))
@@ -63,7 +63,7 @@ class Game():
                 temp_board = board.copy()
                 temp_turn = turn.copy()
                 continue
-            elif nextmove.lower() == 'finalize':
+            elif nextmove.lower() == 'finalize' or nextmove.lower() == 'f':
                 board = temp_board
                 turn = temp_turn
                 break
@@ -81,56 +81,108 @@ class Game():
             else:
                 temp_board = temp_board.move(temp_turn.player, *nextmove)
                 temp_turn.roll.use(which)
+        board = temp_board
+        turn = temp_turn
         return board, Turn(new_player, Roll())
 
     @classmethod
     def computer_interact(cls, board, turn, strat):
         scores = {}
-        print 'Computer rolled: ', turn.roll
+        print '{} Computer rolled: '.format(turn.player.upper()), turn.roll
         col = turn.player
         enemy = white if col == black else black
-        if len(turn.roll.touse) == 2:
-            for d, ms in board.possible_moves(turn).items():
-                for m in ms:
-                    temp_turn = turn.copy()
-                    temp_turn.roll.use(d)
-                    temp_board = board.move(col, *m)
-                    poss = temp_board.possible_moves(temp_turn)
-                    if all(len(v)>0 for v in poss.values()):
-                        for dd, mms in poss.items():
-                            for mm in mms:
-                                if (tuple(m), tuple(mm)) in scores.keys():
-                                    continue
-                                temp_final = temp_board.move(col, *mm)
-                                scores[(tuple(m), tuple(mm))] = ai_strategies.score(strat, [board.state[col]-temp_final.state[col], temp_final.home[col], 
-                                    temp_final.alone[col], temp_final.safe[col], temp_final.prison[enemy], temp_final.inhouse[col]])
-                    else:
-                        scores[(tuple(m), ' ')] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                            temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
-        else:
-            for m in board.possible_moves(turn).values()[0]:
-                for m2 in board.move(black, *m).possible_moves(turn).values()[0]:
-                    for m3 in board.move(black, *m).move(black, *m2).possible_moves(turn).values()[0]:
-                        for m4 in board.move(black, *m).move(black, *m2).move(black, *m3).possible_moves(turn).values()[0]:
-                            temp_board = board.move(black, *m).move(black, *m2).move(black, *m3).move(black, *m4)
-                            k = (tuple(m), tuple(m2), tuple(m3), tuple(m4))
+        # print board.possible_moves(turn)
+        if not all(m==[] for m in board.possible_moves(turn).values()):
+            if len(turn.roll.touse) == 2:
+                for d, ms in board.possible_moves(turn).items():
+                    for m in ms:
+                        temp_turn = turn.copy()
+                        temp_turn.roll.use(d)
+                        temp_board = board.move(col, *m)
+                        if temp_board.is_complete()[0]:
+                            print '{} Computer played: '.format(col), m
+                            return temp_board, Turn(enemy, Roll())
+                        poss = temp_board.possible_moves(temp_turn)
+                        if all(len(v)>0 for v in poss.values()):
+                            for dd, mms in poss.items():
+                                for mm in mms:
+                                    if (tuple(m), tuple(mm)) in scores.keys():
+                                        continue
+                                    temp_final = temp_board.move(col, *mm)
+                                    scores[(tuple(m), tuple(mm))] = ai_strategies.score(strat, [board.state[col]-temp_final.state[col], temp_final.home[col], 
+                                        temp_final.alone[col], temp_final.safe[col], temp_final.prison[enemy], temp_final.inhouse[col]])
+                        else:
+                            scores[(tuple(m), ' ')] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
+                                temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+            else:
+                poss = board.possible_moves(turn)
+                if len(poss)>0 and any(len(x)>0 for x in poss.values()):
+                    for m in poss.values()[0]:
+                        t = turn.copy()
+                        t.roll.use(t.roll.touse[0])
+                        if board.move(col, *m).is_complete()[0]:
+                            print '{} Computer played: '.format(col), m
+                            return board.move(col, *m), Turn(enemy, Roll())
+                        poss1 = board.move(col, *m).possible_moves(t)
+                        if len(poss1)>0 and any(len(x)>0 for x in poss1.values()):
+                            for m2 in poss1.values()[0]:
+                                t1 = turn.copy()
+                                t1.roll.use(t1.roll.touse[0])
+                                if board.move(col, *m).move(col, *m2).is_complete()[0]:
+                                    print '{} Computer played: '.format(col), m, m2
+                                    return board.move(col, *m).move(col, *m2), Turn(enemy, Roll())
+                                poss2 = board.move(col, *m).move(col, *m2).possible_moves(t1)
+                                if len(poss2)>0 and any(len(x)>0 for x in poss2.values()):
+                                    for m3 in poss2.values()[0]:
+                                        t2 = turn.copy()
+                                        t2.roll.use(t2.roll.touse[0])
+                                        if board.move(col, *m).move(col, *m2).move(col, *m3).is_complete()[0]:
+                                            print '{} Computer played: '.format(col), m, m2, m3
+                                            return board.move(col, *m).move(col, *m2).move(col, *m3), Turn(enemy, Roll())
+                                        poss3 = board.move(col, *m).move(col, *m2).move(col, *m3).possible_moves(t2)
+                                        if len(poss3)>0 and any(len(x)>0 for x in poss3.values()):
+                                            for m4 in poss3.values()[0]:
+                                                if board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4).is_complete()[0]:
+                                                    print '{} Computer played: '.format(col), m, m2, m3, m4
+                                                    return board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4), Turn(enemy, Roll())
+                                                temp_board = board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4)
+                                                k = (tuple(m), tuple(m2), tuple(m3), tuple(m4))
+                                                scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
+                                                            temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                                        else:
+                                            temp_board = board.move(col, *m).move(col, *m2).move(col, *m3)
+                                            k = (tuple(m), tuple(m2), tuple(m3))
+                                            scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
+                                                        temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                                else:
+                                    temp_board = board.move(col, *m).move(col, *m2)
+                                    k = (tuple(m), tuple(m2))
+                                    scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
+                                                temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                        else:
+                            temp_board = board.move(col, *m)
+                            k = (tuple(m), ' ')
                             scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
                                         temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
-            # pass
-        all_ = scores.items()
-        values = [x[1] for x in all_]
-        maxIndex = values.index(max(values))
-        best_moves = all_[maxIndex][0]
-        for m in best_moves:
-            if m == ' ':
-                continue
-            else:
-                board = board.move(col, *m)
-        print '{} Computer played: '.format(col), best_moves
+            all_ = scores.items()
+            values = [x[1] for x in all_]
+            maxIndex = values.index(max(values))
+            best_moves = all_[maxIndex][0]
+            for m in best_moves:
+                if m == ' ':
+                    continue
+                else:
+                    board = board.move(col, *m)
+            print '{} Computer played: '.format(col.upper()), best_moves
+        else:
+            print '{} Computer cannot move, your turn !'.format(col)
         return  board, Turn(enemy, Roll())
 
     def human_vs_computer_play(self, pickup=False):
-        col_human = raw_input('Which color do you want to play with? ').lower()
+        col_human = raw_input('Which color do you want to play with? Enter W or B: ').lower()
+        if col_human not in ['w', 'b']:
+            print 'Not a valid color ! Game aborted !'
+            return
         col_computer = white if col_human == black else black
         if pickup == False:
             turn = self.initiate_game(Roll())
@@ -144,7 +196,7 @@ class Game():
         else:
             print "\n The Computer won the right to start !"
             print
-        while not turn.is_complete():
+        while not turn.is_complete() and not self.board.is_complete()[0]:
             if turn.player == col_human:
                 self.board, turn = Game.human_interact(self.board, turn, False)
             else:
@@ -163,7 +215,7 @@ class Game():
             turn = self.history[0]
         self.history.append(turn)
         k = True
-        while not self.board.is_complete()[0]:
+        while not turn.is_complete() and not self.board.is_complete()[0]:
             self.board, turn = Game.human_interact(self.board, turn, k)
             k = False
             self.history.append(turn)
@@ -174,6 +226,20 @@ class Game():
         except:
             print 'GAME ABORTED.'
 
+    def computer_vs_computer_play(self):
+        turn = self.initiate_game(Roll())
+        print "{} Computer won the right to start !".format(turn.player.upper())
+        print
+        while not turn.is_complete() and not self.board.is_complete()[0]:
+            self.board, turn = Game.computer_interact(self.board, turn, careful)
+            while turn.roll.touse[0] == turn.roll.touse[1]:
+                turn = Turn(turn.player, Roll())
+            print self.board
+            self.history.append(turn)
+        print 'GAME CONCLUDED, {} Computer wins !'.format(self.board.is_complete()[1])
+
+
+
 if __name__ == '__main__':
     message = 'For: \n * Human vs Human: enter 1 \n * Human vs Computer: enter 2 \n * Computer vs Computer: enter 3 \n'
     typ = int(raw_input(message))
@@ -182,6 +248,7 @@ if __name__ == '__main__':
     elif typ == 2:
         Game().human_vs_computer_play()
     else:
+        # print 'Not yet implemented ! Come back later !'
         Game().computer_vs_computer_play()
 
 

@@ -212,15 +212,17 @@ class Board():
                 if col == black:
                     if p+d in pieces or (p+d<=23 and (self.board[p+d] is None or self.board[p+d][1]<=1)):
                         poss_moves[d].append([p, p+d])
-        if len(roll) > 1:
+        if len(roll) > 1 and not all(len(x)==0 for x in poss_moves.values()):
             return self.forward_check(poss_moves, turn)
         else:
             toreturn = {}
             for k, v in poss_moves.iteritems():
                 toreturn[k] = removeListDuplicate(v)
             return toreturn
-            
+
     def forward_check(self, possiblemoves, turn):
+        if self.is_complete():
+            return possiblemoves
         inadmissible = {}
         for k, moves in possiblemoves.items():
             for move in moves:
