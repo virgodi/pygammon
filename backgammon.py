@@ -90,7 +90,7 @@ class Game():
         return board, Turn(new_player, Roll())
 
     @classmethod
-    def computer_interact(cls, board, turn, strat):
+    def computer_interact(cls, board, turn, strat, simple=True):
         scores = {}
         print '{} Computer rolled: '.format(turn.player.upper()), turn.roll
         col = turn.player
@@ -113,11 +113,15 @@ class Game():
                                     if (tuple(m), tuple(mm)) in scores.keys():
                                         continue
                                     temp_final = temp_board.move(col, *mm)
-                                    scores[(tuple(m), tuple(mm))] = ai_strategies.score(strat, [board.state[col]-temp_final.state[col], temp_final.home[col], 
-                                        temp_final.alone[col], temp_final.safe[col], temp_final.prison[enemy], temp_final.inhouse[col]])
+                                    if simple:
+                                        scores[(tuple(m), tuple(mm))] = ai_strategies.score(strat, temp_final.get_features(board, col))
+                                    else:
+                                        scores[(tuple(m), tuple(mm))] = ai_strategies.score(strat, temp_final.feat(board, col))
                         else:
-                            scores[(tuple(m), ' ')] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                                temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                            if simple:
+                                scores[(tuple(m), ' ')] = ai_strategies.score(strat, temp_board.get_features(board, col))
+                            else:
+                                scores[(tuple(m), ' ')] = ai_strategies.score(strat, temp_board.feat(board, col))
             else:
                 poss = board.possible_moves(turn)
                 if len(poss)>0 and any(len(x)>0 for x in poss.values()):
@@ -151,23 +155,32 @@ class Game():
                                                     return board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4), Turn(enemy, Roll())
                                                 temp_board = board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4)
                                                 k = (tuple(m), tuple(m2), tuple(m3), tuple(m4))
-                                                scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                                                            temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                                                if simple:
+                                                    scores[k] = ai_strategies.score(strat, temp_board.get_features(board, col))
+                                                else:
+                                                    scores[k] = ai_strategies.score(strat, temp_board.feat(board, col))
                                         else:
                                             temp_board = board.move(col, *m).move(col, *m2).move(col, *m3)
                                             k = (tuple(m), tuple(m2), tuple(m3))
-                                            scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                                                        temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                                            if simple:
+                                                scores[k] = ai_strategies.score(strat, temp_board.get_features(board, col))
+                                            else:
+                                                scores[k] = ai_strategies.score(strat, temp_board.feat(board, col))
                                 else:
                                     temp_board = board.move(col, *m).move(col, *m2)
                                     k = (tuple(m), tuple(m2))
-                                    scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                                                temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                                    if simple:
+                                        scores[k] = ai_strategies.score(strat, temp_board.get_features(board, col))
+                                    else:
+                                        scores[k] = ai_strategies.score(strat, temp_board.feat(board, col))
+
                         else:
                             temp_board = board.move(col, *m)
                             k = (tuple(m), ' ')
-                            scores[k] = ai_strategies.score(strat, [board.state[col]-temp_board.state[col], temp_board.home[col], 
-                                        temp_board.alone[col], temp_board.safe[col], temp_board.prison[enemy], temp_board.inhouse[col]])
+                            if simple:
+                                scores[k] = ai_strategies.score(strat, temp_board.get_features(board, col))
+                            else:
+                                scores[k] = ai_strategies.score(strat, temp_board.feat(board, col))
             all_ = scores.items()
             values = [x[1] for x in all_]
             maxIndex = values.index(max(values))
@@ -249,9 +262,15 @@ class Game():
         c=0
         while not turn.is_complete() and not self.board.is_complete()[0]:
             if c%2==0:
-                self.board, turn = Game.computer_interact(self.board, turn, comp_strat1)
+                if comp_strat1 == custom:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat1, False)
+                else:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat1)
             else:
-                self.board, turn = Game.computer_interact(self.board, turn, comp_strat2)
+                if comp_strat2 == custom:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat2, False)
+                else:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat2)
             while turn.roll.touse[0] == turn.roll.touse[1]:
                 turn = Turn(turn.player, Roll())
             print self.board
@@ -267,10 +286,13 @@ if __name__ == '__main__':
     if typ == 1:
         Game().human_vs_human_play()
     elif typ == 2:
-        stra = raw_input('Do you want an aggressive (A) or careful (C) opponent? ')
+        stra = raw_input('Do you want an aggressive (A), careful (C)  or random (R) opponent? ')
         if stra.lower() == 'a':
             print 'Aggressive it is ! Here we go !'
             Game().human_vs_computer_play(comp_strat=aggressive)
+        elif stra.lower() == 'r':
+            print 'Random it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=random_)
         else:
             print 'Careful it is ! Here we go !'
             Game().human_vs_computer_play()
@@ -283,10 +305,18 @@ if __name__ == '__main__':
             stra2 = raw_input('How about the second one? ')
             if stra1.lower() == 'a':
                 stra1 = aggressive
+            elif stra1.lower() == 'r':
+                stra1 = random_
+            elif stra1.lower() == 'c':
+                stra1 = custom
             else:
                 stra1 = careful
             if stra2.lower() == 'a':
                 stra2 = aggressive
+            elif stra2.lower() == 'r':
+                stra2 = random_
+            elif stra2.lower() == 'c':
+                stra2 = custom
             else:
                 stra2 = careful
             Game().computer_vs_computer_play(stra1, stra2)

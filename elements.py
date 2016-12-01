@@ -1,6 +1,8 @@
 import copy
 import random
 import numpy
+import itertools
+import operator
 
 white = 'w'
 black = 'b'
@@ -143,9 +145,15 @@ class Board():
     
     def furthest_from_home(self, col):
         if col == white:
-            return max([k for k,v in self.board.items() if v and v[0]==white])
+            try:
+                return max([k for k,v in self.board.items() if v and v[0]==white])
+            except:
+                return 24
         else:
-            return min([k for k,v in self.board.items() if v and v[0]==black])
+            try:
+                return min([k for k,v in self.board.items() if v and v[0]==black])
+            except:
+                return -1
     
     def update_inhouse(self):
         c_w = 0
@@ -261,6 +269,98 @@ class Board():
                 toreturn[k] = removeListDuplicate(v)
             return toreturn
 
+    def get_pairs_moves(self, turn):
+        _poss = self.possible_moves(turn)
+        moves = []
+        if all(m==[] for m in _poss.values()):
+            return []
+        else:
+            if len(turn.roll.touse) == 2:
+                for d, ms in _poss.items():
+                    for m in ms:
+                        temp_turn = turn.copy()
+                        temp_turn.roll.use(d)
+                        temp_board = self.move(turn.player, *m)
+                        if temp_board.is_complete()[0]:
+                            k = [m]
+                            if any(list(x) in moves for x in itertools.permutations(k)):
+                                pass
+                            else:
+                                moves.append(k)
+                            continue
+                        poss = temp_board.possible_moves(temp_turn)
+                        if all(len(v)>0 for v in poss.values()):
+                            for dd, mms in poss.items():
+                                for mm in mms:
+                                    if [m, mm] not in moves and [mm, m] not in moves:
+                                        moves.append([m, mm])
+                        else:
+                            if [m] not in moves:
+                                moves.append([m])
+            else:
+                if len(_poss)>0 and any(len(x)>0 for x in _poss.values()):
+                    for m in removeListDuplicate(_poss.values()[0]):
+                        t = turn.copy()
+                        t.roll.use(t.roll.touse[0])
+                        if self.move(turn.player, *m).is_complete()[0]:
+                            k = [m]
+                            if any(list(x) in moves for x in itertools.permutations(k)):
+                                pass
+                            else:
+                                moves.append(k)
+                            continue
+                        poss1 = self.move(turn.player, *m).possible_moves(t)
+                        if len(poss1)>0 and any(len(x)>0 for x in poss1.values()):
+                            for m2 in removeListDuplicate(poss1.values()[0]):
+                                t1 = turn.copy()
+                                t1.roll.use(t1.roll.touse[0])
+                                if self.move(turn.player, *m).move(turn.player, *m2).is_complete()[0]:
+                                    k = [m, m2]
+                                    if any(list(x) in moves for x in itertools.permutations(k)):
+                                        pass
+                                    else:
+                                        moves.append(k)
+                                    continue
+                                poss2 = self.move(turn.player, *m).move(turn.player, *m2).possible_moves(t1)
+                                if len(poss2)>0 and any(len(x)>0 for x in poss2.values()):
+                                    for m3 in removeListDuplicate(poss2.values()[0]):
+                                        t2 = t1.copy()
+                                        t2.roll.use(t2.roll.touse[0])
+                                        if self.move(turn.player, *m).move(turn.player, *m2).move(turn.player, *m3).is_complete()[0]:
+                                            k = [m, m2, m3]
+                                            if any(list(x) in moves for x in itertools.permutations(k)):
+                                                pass
+                                            else:
+                                                moves.append(k)
+                                            continue
+                                        poss3 = self.move(turn.player, *m).move(turn.player, *m2).move(turn.player, *m3).possible_moves(t2)
+                                        if len(poss3)>0 and any(len(x)>0 for x in poss3.values()):
+                                            for m4 in removeListDuplicate(poss3.values()[0]):
+                                                k = [m, m2, m3, m4]
+                                                if any(list(x) in moves for x in itertools.permutations(k)):
+                                                    pass
+                                                else:
+                                                    moves.append(k)
+                                        else:
+                                            k = [m, m2, m3]
+                                            if any(list(x) in moves for x in itertools.permutations(k)):
+                                                pass
+                                            else:
+                                                moves.append(k)
+                                else:
+                                    k = [m, m2]
+                                    if any(list(x) in moves for x in itertools.permutations(k)):
+                                        pass
+                                    else:
+                                        moves.append(k)
+                        else:
+                            k = [m]
+                            if any(list(x) in moves for x in itertools.permutations(k)):
+                                pass
+                            else:
+                                moves.append(k)
+        return moves
+
     @classmethod
     def is_in(cls, possiblemoves, move):
         for k, v in possiblemoves.items():
@@ -286,6 +386,7 @@ class Board():
                 return new
             elif self.board[dst][0] != col and self.board[dst][1] == 1:
                 new = self.copy()
+                new.prison[col]-=1
                 new.prison[new.board[dst][0]] += 1
                 new.board[dst] = [col, 1]
                 new.eval_state()
@@ -331,7 +432,81 @@ class Board():
                 new.update_alone()
                 new.update_inhouse()
                 return new
-            
+
+    def get_features(self, prev_board, col):
+        f = []
+        f.append(self.state[col]-prev_board.state[col])
+        f.append(self.home[col])
+        f.append(self.alone[col])
+        f.append(self.safe[col])
+        f.append(self.prison[white if col==black else black])
+        f.append(self.inhouse[col])
+        q1, q2, q3, q4 = 0, 0, 0, 0
+        for k,v in self.board.iteritems():
+            if v and v[0] == col and col == black:
+                if k<=5:
+                    q4+=v[1]
+                elif k<=11:
+                    q3+=v[1]
+                elif k<=17:
+                    q2+=v[1]
+                else:
+                    q1+=v[1]
+            elif v and v[0] == col and col == white:
+                if k<=5:
+                    q1+=v[1]
+                elif k<=11:
+                    q2+=v[1]
+                elif k<=17:
+                    q3+=v[1]
+                else:
+                    q4+=v[1]
+        f.append(q1)
+        f.append(q2)
+        f.append(q3)
+        f.append(q4)
+
+        return f
+    def feat_per_quarter(self, board, col, q0, q1):
+        enem = white if col == black else black
+        op = operator.gt if col == black else operator.lt
+        eaten = 0
+        alone = 0
+        twos = 0
+        mores = 0
+        safe = None
+        if self.prison[col]>0:
+            safe = 0
+            furthest_enemey = None
+        else:
+            furthest_enemey = self.furthest_from_home(enem) 
+        for pos in range(q0, q1):
+            if self.board[pos] and board.board[pos] and self.board[pos][0] == col and board.board[pos][0] == enem:
+                eaten+=1
+            if self.board[pos] and self.board[pos] == [col, 1]:
+                alone+=1
+            elif self.board[pos] and self.board[pos] == [col, 2]:
+                twos+=1
+            elif self.board[pos] and self.board[pos][0] == col and self.board[pos][1]>2:
+                mores+=1
+            if furthest_enemey and self.board[pos] and self.board[pos][0] == col:
+                if op(pos, furthest_enemey):
+                    if safe is None:
+                        safe = self.board[pos][1]
+                    else:
+                        safe += self.board[pos][1]
+        if safe is None:
+            safe = 0
+        return [eaten, safe, alone, twos, mores]
+        
+    def feat(self, board, col):
+        qs = [(0, 6), (6, 12), (12, 18), (18, 24)]
+        qs = qs[::-1] if col == black else qs
+        features = [self.home[col]-board.home[col]]
+        for q in qs:
+            features.extend(self.feat_per_quarter(board, col, *q))
+        return features
+
     def __repr__(self):
         upp = [[' ' for i in range(12)] for j in range(5)]
         low = [[' ' for i in range(12)] for j in range(5)]
