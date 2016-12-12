@@ -134,9 +134,15 @@ class Board():
 
     def is_complete(self):
         if self.home[white] == 15:
-            return True, 'White'
+            if self.home[black] == 0:
+                return True, 'White', True
+            else:
+                return True, 'White', False
         elif self.home[black] == 15:
-            return True, 'Black'
+            if self.home[white] == 0:
+                return True, 'Black', True
+            else:
+                return True, 'Black', False
         else:
             return False, None
         
@@ -502,9 +508,12 @@ class Board():
     def feat(self, board, col):
         qs = [(0, 6), (6, 12), (12, 18), (18, 24)]
         qs = qs[::-1] if col == black else qs
+        enem = white if col == black else black
         features = [self.home[col]-board.home[col]]
         for q in qs:
             features.extend(self.feat_per_quarter(board, col, *q))
+        for q in qs[::-1]:
+            features.extend(self.feat_per_quarter(board, enem, *q))
         return features
 
     def __repr__(self):

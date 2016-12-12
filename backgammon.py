@@ -90,9 +90,10 @@ class Game():
         return board, Turn(new_player, Roll())
 
     @classmethod
-    def computer_interact(cls, board, turn, strat, simple=True):
+    def computer_interact(cls, board, turn, strat, simple=True, _print=True):
         scores = {}
-        print '{} Computer rolled: '.format(turn.player.upper()), turn.roll
+        if _print:
+            print '{} Computer rolled: '.format(turn.player.upper()), turn.roll
         col = turn.player
         enemy = white if col == black else black
         # print board.possible_moves(turn)
@@ -104,7 +105,8 @@ class Game():
                         temp_turn.roll.use(d)
                         temp_board = board.move(col, *m)
                         if temp_board.is_complete()[0]:
-                            print '{} Computer played: '.format(col), m
+                            if _print:
+                                print '{} Computer played: '.format(col), m
                             return temp_board, Turn(enemy, Roll())
                         poss = temp_board.possible_moves(temp_turn)
                         if all(len(v)>0 for v in poss.values()):
@@ -129,7 +131,8 @@ class Game():
                         t = turn.copy()
                         t.roll.use(t.roll.touse[0])
                         if board.move(col, *m).is_complete()[0]:
-                            print '{} Computer played: '.format(col), m
+                            if _print:
+                                print '{} Computer played: '.format(col), m
                             return board.move(col, *m), Turn(enemy, Roll())
                         poss1 = board.move(col, *m).possible_moves(t)
                         if len(poss1)>0 and any(len(x)>0 for x in poss1.values()):
@@ -137,7 +140,8 @@ class Game():
                                 t1 = turn.copy()
                                 t1.roll.use(t1.roll.touse[0])
                                 if board.move(col, *m).move(col, *m2).is_complete()[0]:
-                                    print '{} Computer played: '.format(col), m, m2
+                                    if _print:
+                                        print '{} Computer played: '.format(col), m, m2
                                     return board.move(col, *m).move(col, *m2), Turn(enemy, Roll())
                                 poss2 = board.move(col, *m).move(col, *m2).possible_moves(t1)
                                 if len(poss2)>0 and any(len(x)>0 for x in poss2.values()):
@@ -145,13 +149,15 @@ class Game():
                                         t2 = turn.copy()
                                         t2.roll.use(t2.roll.touse[0])
                                         if board.move(col, *m).move(col, *m2).move(col, *m3).is_complete()[0]:
-                                            print '{} Computer played: '.format(col), m, m2, m3
+                                            if _print:
+                                                print '{} Computer played: '.format(col), m, m2, m3
                                             return board.move(col, *m).move(col, *m2).move(col, *m3), Turn(enemy, Roll())
                                         poss3 = board.move(col, *m).move(col, *m2).move(col, *m3).possible_moves(t2)
                                         if len(poss3)>0 and any(len(x)>0 for x in poss3.values()):
                                             for m4 in poss3.values()[0]:
                                                 if board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4).is_complete()[0]:
-                                                    print '{} Computer played: '.format(col), m, m2, m3, m4
+                                                    if _print:
+                                                        print '{} Computer played: '.format(col), m, m2, m3, m4
                                                     return board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4), Turn(enemy, Roll())
                                                 temp_board = board.move(col, *m).move(col, *m2).move(col, *m3).move(col, *m4)
                                                 k = (tuple(m), tuple(m2), tuple(m3), tuple(m4))
@@ -190,10 +196,16 @@ class Game():
                     continue
                 else:
                     board = board.move(col, *m)
-            print '{} Computer played: '.format(col.upper()), best_moves
+            if _print:
+                print '{} Computer played: '.format(col.upper()), best_moves
         else:
-            print '{} Computer cannot move, your turn !'.format(col)
-        return  board, Turn(enemy, Roll())
+            if _print:
+                print '{} Computer cannot move, your turn !'.format(col)
+        next_t = Turn(enemy, Roll())
+        #Comment out if want double 
+        while next_t.roll.roll in [[1, 1], [2,2], [3,3], [4,4], [5,5], [6,6]]:
+            next_t = Turn(enemy, Roll())
+        return  board, next_t
 
     def human_vs_computer_play(self, comp_strat=careful, pickup=False):
         col_human = raw_input('Which color do you want to play with? Enter W or B: ').lower()
@@ -217,7 +229,10 @@ class Game():
             if turn.player == col_human:
                 self.board, turn = Game.human_interact(self.board, turn, False)
             else:
-                self.board, turn = Game.computer_interact(self.board, turn, comp_strat)
+                if comp_strat.type == True:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat, False, _print=True)
+                else:
+                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat, simple=True, _print=True)
             if turn == 'exit':
                 break
         try:
@@ -233,7 +248,7 @@ class Game():
         self.history.append(turn)
         k = True
         while not turn.is_complete() and not self.board.is_complete()[0]:
-            self.board, turn = Game.human_interact(self.board, turn, k)
+            self.board, turn = self.human_interact(self.board, turn, k)
             k = False
             self.history.append(turn)
             if turn == 'exit':
@@ -243,41 +258,44 @@ class Game():
         except:
             print 'GAME ABORTED.'
 
-    def computer_vs_computer_play(self, comp_strat1=careful, comp_strat2=careful):
+    def computer_vs_computer_play(self, comp_strat1=careful, comp_strat2=careful, _print=True):
         turn = self.initiate_game(Roll())
         other = white if turn.player == black else black
         strat = {}
         strat[turn.player] = comp_strat1
         strat[other] = comp_strat2
-        print "{} Computer won the right to start !".format(turn.player.upper())
-        if comp_strat1 == careful:
-            print "{} Computer plays carefully!".format(turn.player.upper())
-        else:
-            print "{} Computer plays aggressively!".format(turn.player.upper())
-        if comp_strat2 == careful:
-            print "{} Computer plays carefully!".format(other.upper())
-        else:
-            print "{} Computer plays aggressively!".format(other.upper())
-        print
+        if _print:
+            print "{} Computer won the right to start !".format(turn.player.upper())
+            if comp_strat1 == careful:
+                print "{} Computer plays carefully!".format(turn.player.upper())
+            else:
+                print "{} Computer plays aggressively!".format(turn.player.upper())
+            if comp_strat2 == careful:
+                print "{} Computer plays carefully!".format(other.upper())
+            else:
+                print "{} Computer plays aggressively!".format(other.upper())
+            print
         c=0
         while not turn.is_complete() and not self.board.is_complete()[0]:
             if c%2==0:
-                if comp_strat1 == custom:
-                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat1, False)
+                if comp_strat1.type == True:
+                    self.board, turn = self.computer_interact(self.board, turn, comp_strat1, False, _print=_print)
                 else:
-                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat1)
+                    self.board, turn = self.computer_interact(self.board, turn, comp_strat1, simple=True, _print=_print)
             else:
-                if comp_strat2 == custom:
-                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat2, False)
+                if comp_strat2.type == True:
+                    self.board, turn = self.computer_interact(self.board, turn, comp_strat2, False, _print=_print)
                 else:
-                    self.board, turn = Game.computer_interact(self.board, turn, comp_strat2)
+                    self.board, turn = self.computer_interact(self.board, turn, comp_strat2, simple=True, _print=_print)
             while turn.roll.touse[0] == turn.roll.touse[1]:
                 turn = Turn(turn.player, Roll())
-            print self.board
+            if _print:
+                print self.board
             self.history.append(turn)
             c+=1
-        print 'GAME CONCLUDED, {} ({}) Computer wins !'.format(self.board.is_complete()[1], str(strat[self.board.is_complete()[1][0].lower()]))
-
+        if _print:
+            print 'GAME CONCLUDED, {} ({}) Computer wins !'.format(self.board.is_complete()[1], str(strat[self.board.is_complete()[1][0].lower()]))            
+        return self.board.is_complete()[1], strat[self.board.is_complete()[1][0].lower()], self.board.is_complete()[2]
 
 
 if __name__ == '__main__':
@@ -286,19 +304,31 @@ if __name__ == '__main__':
     if typ == 1:
         Game().human_vs_human_play()
     elif typ == 2:
-        stra = raw_input('Do you want an aggressive (A), careful (C)  or random (R) opponent? ')
+        stra = raw_input('Do you want an aggressive (A), careful (C), random (R), logically trained (L/LL) or genetically trained (G21/G41) opponent? ')
         if stra.lower() == 'a':
             print 'Aggressive it is ! Here we go !'
             Game().human_vs_computer_play(comp_strat=aggressive)
         elif stra.lower() == 'r':
             print 'Random it is ! Here we go !'
             Game().human_vs_computer_play(comp_strat=random_)
+        elif stra.lower() == 'l':
+            print 'Logistically trained it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=logistic)
+        elif stra.lower() == 'g21':
+            print 'Genetically trained it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=genetic_21)
+        elif stra.lower() == 'g41':
+            print 'Genetically trained it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=genetic_41)
+        elif stra.lower() == 'll':
+            print 'Logistically with long features trained it is ! Here we go !'
+            Game().human_vs_computer_play(comp_strat=logistic_long)
         else:
             print 'Careful it is ! Here we go !'
             Game().human_vs_computer_play()
     else:
         # print 'Not yet implemented ! Come back later !'
-        stra1 = raw_input('Do you want the first computer to be aggressive (A) or careful (C)? ')
+        stra1 = raw_input('Do you want the first computer to be aggressive (A), careful (C), random (R), logically trained (L/LL) or genetically trained (G21/G41)? ')
         if stra1.lower() == 'd':
             Game().computer_vs_computer_play()
         else:  
@@ -307,16 +337,26 @@ if __name__ == '__main__':
                 stra1 = aggressive
             elif stra1.lower() == 'r':
                 stra1 = random_
-            elif stra1.lower() == 'c':
-                stra1 = custom
+            elif stra1.lower() == 'l':
+                stra1 = logistic
+            elif stra1.lower() == 'll':
+                stra1 = logistic_long
+            elif stra1.lower() == 'g21':
+                stra1 = genetic_21
+            elif stra1.lower() == 'g41':
+                stra1 = genetic_41
             else:
                 stra1 = careful
             if stra2.lower() == 'a':
                 stra2 = aggressive
             elif stra2.lower() == 'r':
                 stra2 = random_
-            elif stra2.lower() == 'c':
-                stra2 = custom
+            elif stra2.lower() == 'l':
+                stra2 = logistic
+            elif stra2.lower() == 'g21':
+                stra2 = genetic_21
+            elif stra2.lower() == 'g41':
+                stra2 = genetic_41
             else:
                 stra2 = careful
             Game().computer_vs_computer_play(stra1, stra2)

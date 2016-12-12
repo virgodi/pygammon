@@ -1,0 +1,27 @@
+\begin{thebibliography}{1}
+
+\bibitem{genetic}
+Jordan B. Pollack \& Alan~D. Blair.
+\newblock Why did td-gammon work?
+
+\bibitem{alpha}
+Chris J. Maddison Arthur Guez Laurent Sifre George van den Driessche Julian
+  Schrittwieser Ioannis Antonoglou Veda Panneershelvam Marc Lanctot Sander
+  Dieleman Dominik Grewe John Nham Nal Kalchbrenner Ilya Sutskever Timothy
+  Lillicrap Madeleine Leach Koray Kavukcuoglu Thore Graepel \& Demis~Hassabis
+  David~Silver, Aja~Huang.
+\newblock Mastering the game of go with deep neural networks and tree search.
+\newblock {\em Nature}, 2016.
+
+\bibitem{tdg}
+Gerald Tesauro.
+\newblock Temporal difference learning and td-gammon.
+\newblock {\em Communications of the ACM}, 38(3), 1995.
+
+\bibitem{expert}
+Marco~A. Wiering.
+\newblock Self-play and using an expert to learn to play backgammon with
+  temporal difference learning.
+\newblock {\em J. Intelligent Learning Systems \& Application}, 2:57--68, 2010.
+
+\end{thebibliography}
